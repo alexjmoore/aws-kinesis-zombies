@@ -28,6 +28,7 @@ public class ZombieCtrl {
 
     @Scheduled(fixedRate = 2 * 1000)
     public void sendZombies() {
+        log.info("SENDING ZOMBIES");
         for (ZombieLecture lecture : lectureSource.getLectures()) {
             String msg = format("%s;%s;%s;%s\r\n", lecture.getTimestamp(), lecture.getZombieId(), lecture.getLatitude(), lecture.getLongitude());            
             log.debug("Sending message {}.", msg);

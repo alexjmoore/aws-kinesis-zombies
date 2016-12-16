@@ -58,6 +58,7 @@
             
             stompClient.connect({ }, function(frame) {
                 stompClient.subscribe("/topic/zombies", function(data) {
+                    console.log("Zombie Update...")
                     var message = data.body;
                     var zombieLecture = message.split(';');
                     var lectureObject = 
