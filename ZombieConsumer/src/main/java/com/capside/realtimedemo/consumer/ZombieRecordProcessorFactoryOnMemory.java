@@ -19,7 +19,7 @@ public class ZombieRecordProcessorFactoryOnMemory implements IEventProcessorFact
     
     private final Set<ZombieLecture> lectures = new HashSet<>();
     
-    //@Override
+    @Override
     public IEventProcessor createEventProcessor(PartitionContext context) throws Exception {
         return new ZombieRecordProcessorOnMemory(lectures);
     }
