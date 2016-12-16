@@ -1,70 +1,78 @@
 package com.capside.realtimedemo.consumer;
 
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.microsoft.azure.eventprocessorhost.*;
+import com.microsoft.azure.servicebus.ConnectionStringBuilder;
 import java.lang.management.ManagementFactory;
+import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/* More information: https://blogs.aws.amazon.com/bigdata/post/TxFCI3UJJJYEXJ/Process-Large-DynamoDB-Streams-Using-Multiple-Amazon-Kinesis-Client-Library-KCL
+/*
+    Derived from: https://github.com/capside/aws-kinesis-zombies
  */
 @Component
 @Slf4j
 public class Consumer {
 
-    private final String streamName;
+    private final String namespaceName;
+    private final String eventHubName;
+    private final String sasKey;
+    private final String sasKeyName;
+    private final String storageAccount;
+    private final String storageAccountKey;
 
-    private final String region;
-
-    private final IRecordProcessorFactory zombieRecordFactory;
+    private final IEventProcessorFactory zombieEventFactory;
 
     @Autowired
-    public Consumer(@Value("${stream}") String streamName,
-            @Value("${region}") String region,
-            IRecordProcessorFactory zombieRecordFactory) {
-        this.streamName = streamName;
-        this.region = region;
-        this.zombieRecordFactory = zombieRecordFactory;
-        this.initKinesis();
+    public Consumer(@Value("${ns}") String ns,
+            @Value("${hub}") String hub,
+            @Value("${keyname}") String keyname,
+            @Value("${key}") String key,
+            @Value("${storage}") String storageAccount,
+            @Value("${storagekey}") String storageAccountKey,
+            IEventProcessorFactory zombieEventFactory) {
+        this.namespaceName = ns;
+        this.eventHubName = hub;
+        this.sasKeyName = keyname;
+        this.sasKey = key;
+        this.storageAccount = storageAccount;
+        this.storageAccountKey = storageAccountKey;
+        this.zombieEventFactory = zombieEventFactory;
+        this.initEventHub();
     }
     
-    // Must read: https://github.com/awslabs/amazon-kinesis-client/blob/master/src/main/java/com/amazonaws/services/kinesis/clientlibrary/lib/worker/KinesisClientLibConfiguration.java
-    private void initKinesis() {
+    // Must read: https://github.com/Azure/azure-event-hubs-java/tree/e6413d059471d75224a62df89251c5dfd331f5e2/azure-eventhubs-eph
+    private void initEventHub() {
         String pid = ManagementFactory.getRuntimeMXBean().getName();
         pid = pid.indexOf('@') == -1 ? pid : pid.substring(0, pid.indexOf('@'));
-        log.info("Creating kinesis consumer with pid {}.", pid);
-        KinesisClientLibConfiguration config
-                = new KinesisClientLibConfiguration(
-                        "Zombies" /* aplication name */,
-                        streamName,
-                        new DefaultAWSCredentialsProviderChain(),
-                        "ZombieConsumer_" + pid /* worker id*/)
-                .withRegionName(region)
-                .withFailoverTimeMillis(1000 * 30) // after 30 seconds this worker is considered ko                        
-                .withMaxLeasesForWorker(2) // forced to read only 1 shard for demo reasons.
-                .withMaxRecords(500) // max records per GetRecords
-                .withCallProcessRecordsEvenForEmptyRecordList(false) // no records -> no processing
-                .withInitialLeaseTableWriteCapacity(10) // Dynamodb lease table capacity
-                .withInitialLeaseTableReadCapacity(10)
-                .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
+        log.info("Creating Azure EventHub consumer with pid {}.", pid);
+        ConnectionStringBuilder eventHubConnectionString = new ConnectionStringBuilder(namespaceName, eventHubName, sasKeyName, sasKey);
 
-        final Worker worker
-                = new Worker.Builder()
-                .recordProcessorFactory(zombieRecordFactory)
-                .config(config)
-                .build();
+        String storageConnectionString =
+            "DefaultEndpointsProtocol=http;" +
+            "AccountName=" + storageAccount +
+            ";AccountKey=" + storageAccountKey;
+        
+        EventProcessorHost host = new EventProcessorHost(EventProcessorHost.createHostName("zombieProcessor"),
+            eventHubName, "$Default", eventHubConnectionString.toString(), storageConnectionString);
 
-        new Thread() {
-            @Override
-            public void run() {
-                worker.run();
+
+        //EventProcessorOptions options = EventProcessorOptions.getDefaultOptions();
+        //options.setExceptionNotification(new ErrorNotificationHandler());
+        try {
+            host.registerEventProcessorFactory(ZombieRecordProcessorFactoryOnMemory.class).get();
+        } catch (Exception e) {
+            System.out.print("Failure while registering: ");
+            if (e instanceof ExecutionException) {
+                Throwable inner = e.getCause();
+                log.error("Exectution Exception: {}",inner.toString());
+            } else {
+                log.error("Other error: {}", e.toString());
             }
-        }.start();
+        }
+
     }
 
 }

@@ -1,12 +1,7 @@
 package com.capside.realtimedemo.consumer;
 
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessor;
-import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
-import com.amazonaws.services.kinesis.model.Record;
+import com.microsoft.azure.eventprocessorhost.*;
+import com.microsoft.azure.eventhubs.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
@@ -17,45 +12,45 @@ import org.springframework.messaging.MessagingException;
 /**
  *
  * @author ciberado
+ * @author alexjmoore
  */
 @Slf4j
-abstract class ZombieRecordProcessor implements IRecordProcessor {
+abstract class ZombieRecordProcessor implements IEventProcessor {
 
     private final ObjectMapper mapper;
-    private int processedRecords;
+    private int processedEvents;
 
     public ZombieRecordProcessor() {
-        this.processedRecords = 0;
+        this.processedEvents = 0;
         this.mapper = new ObjectMapper();
     }
 
     @Override
-    public void initialize(InitializationInput initializationInput) {
-        log.info("Procesando desde el shard {} empezando por la subsecuencia {}.", 
-                 initializationInput.getShardId(), initializationInput.getExtendedSequenceNumber().getSubSequenceNumber());
+    public void onOpen(PartitionContext context) {
+        log.info("Processing from the partition {}.", context.getPartitionId());
     }
 
-    @SneakyThrows
     @Override
-    public void processRecords(ProcessRecordsInput processRecordsInput) {
-        List<Record> records = processRecordsInput.getRecords();
-        // Utilizado para actualizar el último registro procesado
-        IRecordProcessorCheckpointer checkpointer = processRecordsInput.getCheckpointer();
-        log.info("Recuperando registros desde kinesis.");
-        for (Record r : records) {
+    @SneakyThrows
+    public void onError(PartitionContext context, Throwable error) {
+        log.error("Partition " + context.getPartitionId() + " got error " + error.toString());
+    }
+
+    @Override
+    @SneakyThrows
+    public void onEvents(PartitionContext context, Iterable<EventData> messages) throws Exception {
+        log.info("Retrieving records from Azure Event Hub.");
+        for (EventData r : messages) {
             try {
-                int len = r.getData().remaining();
-                byte[] buffer = new byte[len];
-                r.getData().get(buffer);
-                String json = new String(buffer, "UTF-8");
+                String json = new String(r.getBody(), "UTF-8");
                 ZombieLecture lecture = mapper.readValue(json, ZombieLecture.class);
                 this.processZombieLecture(lecture);
-                log.debug(processedRecords++ + ": " + json);
-                if (processedRecords % 1000 == 999) {
+                log.debug(processedEvents++ + ": " + json);
+                if (processedEvents % 1000 == 999) {
                     // Uncomment next line to keep track of the processed lectures. 
-                    checkpointer.checkpoint();
+                    context.checkpoint(r);
                 }
-            } catch (UnsupportedEncodingException | MessagingException ex) {
+            } catch (Exception ex) {
                 log.warn(ex.getMessage());
             }
         }
@@ -65,11 +60,8 @@ abstract class ZombieRecordProcessor implements IRecordProcessor {
 
     @Override
     @SneakyThrows
-    public void shutdown(ShutdownInput shutdownInput) {
-        IRecordProcessorCheckpointer checkpointer = shutdownInput.getCheckpointer();
-        ShutdownReason reason = shutdownInput.getShutdownReason();
-        log.info("Finalizado trabajo: {}.", reason);
-        checkpointer.checkpoint();
+    public void onClose(PartitionContext context, CloseReason reason) {
+        log.info("Finished work: {}.", reason.toString());
     }
 
 }

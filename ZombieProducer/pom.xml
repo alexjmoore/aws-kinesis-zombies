@@ -20,9 +20,9 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>1.7</java.version>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -38,21 +38,27 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.16.6</version>
-        </dependency>
-		
+        </dependency>		
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>             
+        <dependency> 
+            <groupId>com.microsoft.azure</groupId> 
+            <artifactId>azure-eventhubs</artifactId> 
+            <version>0.9.0</version> 
         </dependency>
-                
-                
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>amazon-kinesis-producer</artifactId>
-            <version>0.10.2</version>
-        </dependency>                
-
+            <groupId>com.google.collections</groupId>
+            <artifactId>google-collections</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
         
     </dependencies>
 	
