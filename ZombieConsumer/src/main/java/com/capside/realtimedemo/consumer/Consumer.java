@@ -65,7 +65,7 @@ public class Consumer {
         //EventProcessorOptions options = EventProcessorOptions.getDefaultOptions();
         //options.setExceptionNotification(new ErrorNotificationHandler());
         try {
-            host.registerEventProcessorFactory(new ZombieRecordProcessorFactoryOnMemory()).get();
+            host.registerEventProcessorFactory(zombieEventFactory).get();
         } catch (Exception e) {
             System.out.print("Failure while registering: ");
             if (e instanceof ExecutionException) {
