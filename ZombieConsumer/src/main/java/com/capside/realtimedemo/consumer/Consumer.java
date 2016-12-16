@@ -22,6 +22,7 @@ public class Consumer {
     private final String sasKeyName;
     private final String storageAccount;
     private final String storageAccountKey;
+    private final String storageContainer;
 
     private final IEventProcessorFactory zombieEventFactory;
 
@@ -30,8 +31,9 @@ public class Consumer {
             @Value("${hub}") String hub,
             @Value("${keyname}") String keyname,
             @Value("${key}") String key,
-            @Value("${storage}") String storageAccount,
+            @Value("${storageaccount}") String storageAccount,
             @Value("${storagekey}") String storageAccountKey,
+            @Value("${storagecontainer}") String storageContainer,
             IEventProcessorFactory zombieEventFactory) {
         this.namespaceName = ns;
         this.eventHubName = hub;
@@ -39,6 +41,7 @@ public class Consumer {
         this.sasKey = key;
         this.storageAccount = storageAccount;
         this.storageAccountKey = storageAccountKey;
+        this.storageContainer = storageContainer;
         this.zombieEventFactory = zombieEventFactory;
         this.initEventHub();
     }
@@ -56,13 +59,13 @@ public class Consumer {
             ";AccountKey=" + storageAccountKey;
         
         EventProcessorHost host = new EventProcessorHost(EventProcessorHost.createHostName("zombieProcessor"),
-            eventHubName, "$Default", eventHubConnectionString.toString(), storageConnectionString);
+            eventHubName, "$Default", eventHubConnectionString.toString(), storageConnectionString, storageContainer);
 
 
         //EventProcessorOptions options = EventProcessorOptions.getDefaultOptions();
         //options.setExceptionNotification(new ErrorNotificationHandler());
         try {
-            host.registerEventProcessorFactory(ZombieRecordProcessorFactoryOnMemory.class).get();
+            host.registerEventProcessorFactory(new ZombieRecordProcessorFactoryOnMemory()).get();
         } catch (Exception e) {
             System.out.print("Failure while registering: ");
             if (e instanceof ExecutionException) {

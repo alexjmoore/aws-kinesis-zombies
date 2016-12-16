@@ -39,7 +39,7 @@ abstract class ZombieRecordProcessor implements IEventProcessor {
     @Override
     @SneakyThrows
     public void onEvents(PartitionContext context, Iterable<EventData> messages) throws Exception {
-        log.info("Retrieving records from Azure Event Hub.");
+        //log.info("Retrieving records from Azure Event Hub.");
         for (EventData r : messages) {
             try {
                 String json = new String(r.getBody(), "UTF-8");
@@ -48,6 +48,7 @@ abstract class ZombieRecordProcessor implements IEventProcessor {
                 log.debug(processedEvents++ + ": " + json);
                 if (processedEvents % 1000 == 999) {
                     // Uncomment next line to keep track of the processed lectures. 
+                    log.info("CHECKPOINT:" + processedEvents++ + ": " + json);
                     context.checkpoint(r);
                 }
             } catch (Exception ex) {
