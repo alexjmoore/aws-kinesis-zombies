@@ -9,7 +9,7 @@ Azure Event Hub with Zombies
 
 ##Setup
 
-In order to use this code you'll need an active Microsoft Azure Subscription - if you don't have one you can can some free credit here:
+In order to use this code you'll need an active Microsoft Azure Subscription - if you don't have one you can obtain some free credit here:
 
 * https://www.visualstudio.com/dev-essentials/
 
